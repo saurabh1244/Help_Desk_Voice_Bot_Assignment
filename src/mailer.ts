@@ -8,6 +8,7 @@ export const sendConfirmationEmail = async (
   price: number
 ) => {
   try {
+    // We add 'as any' here to fix the Build Error
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,
@@ -16,17 +17,12 @@ export const sendConfirmationEmail = async (
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      // --- THE FIX IS HERE ---
-      // Force IPv4 because IPv6 often times out on cloud servers
-      family: 4, 
-      // -----------------------
-      connectionTimeout: 10000,
-      greetingTimeout: 5000, 
-    });
+      connectionTimeout: 10000, // 10 seconds
+    } as any);
 
     console.log(`Attempting to send email to ${to}...`);
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"IT Help Desk" <${process.env.EMAIL_USER}>`,
       to,
       subject: "IT Support Ticket Confirmation",
@@ -40,11 +36,12 @@ Thank you,
 IT Help Desk`,
     });
 
-    console.log("Email sent successfully! ID:", info.messageId);
+    // Success
     return true; 
 
   } catch (error) {
     console.error("EMAIL FAILED (Non-fatal):", error);
+    // Failure
     return false;
   }
 };
