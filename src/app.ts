@@ -68,13 +68,12 @@ app.post("/create-ticket", async (req, res) => {
     });
 
 
-    try {
-        console.log("Sending email to:", email);
-        await sendConfirmationEmail(email, ticket.id, ticket.issue, ticket.price);
-        console.log("Email sent successfully");
-    } catch (emailError) {
-        console.error("Email failed but ticket created:", emailError);
-        // We do NOT stop the response here. 
+   const emailSuccess = await sendConfirmationEmail(email, ticket.id, ticket.issue, ticket.price);
+
+    if (emailSuccess) {
+        console.log("Email sent successfully!");
+    } else {
+        console.log("Email failed, but ticket created locally.");
     }
 
 
