@@ -10,17 +10,18 @@ export const sendConfirmationEmail = async (
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      port: 587,              // <--- CHANGE to 587
+      secure: false,          // <--- MUST be false for 587
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      // --- CRITICAL FIXES ---
-      family: 4,              // Force IPv4 (Fixes ENETUNREACH error)
-      connectionTimeout: 10000, // 10s timeout (Fixes hanging)
-      // ----------------------
-    } as any); // 'as any' fixes the TypeScript build error
+      tls: {
+        ciphers: "SSLv3",     // Helps with compatibility
+        rejectUnauthorized: false, // Helps bypass strict SSL checks
+      },
+      connectionTimeout: 10000, 
+    } as any);
 
     console.log(`Attempting to send email to ${to}...`);
 
@@ -28,22 +29,13 @@ export const sendConfirmationEmail = async (
       from: `"IT Help Desk" <${process.env.EMAIL_USER}>`,
       to,
       subject: "IT Support Ticket Confirmation",
-      text: `Your IT support ticket has been created successfully.
-
-Ticket ID: ${ticketId}
-Issue: ${issue}
-Service Fee: $${price}
-
-Thank you,
-IT Help Desk`,
+      text: `Ticket ID: ${ticketId}\nIssue: ${issue}\nFee: $${price}`,
     });
 
-    // Success
-    return true; 
+    return true;
 
   } catch (error) {
-    console.error("EMAIL FAILED (Non-fatal):", error);
-    // Failure (but app continues)
+    console.error("EMAIL FAILED:", error);
     return false;
   }
 };
