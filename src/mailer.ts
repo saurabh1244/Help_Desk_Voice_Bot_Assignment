@@ -1,8 +1,8 @@
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 import "dotenv/config";
 
-// Using your provided API Key
-const resend = new Resend(process.env.RESEND_API_KEY || "re_Zjz6Rzd3_G5T9FooNgxDtn561yLs7wsQC");
+// Key ab sirf .env se uthayega
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 export const sendConfirmationEmail = async (
   to: string,
@@ -11,38 +11,31 @@ export const sendConfirmationEmail = async (
   price: number
 ) => {
   try {
-    console.log(`Attempting to send email to ${to} via Resend API...`);
+    console.log(`Attempting to send email to ${to} via SendGrid API...`);
 
-    const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Default free-tier sender
-      to: [to], 
-      subject: `IT Support: Ticket #${ticketId} Created`,
+    const msg = {
+      to: to, 
+      from: process.env.SENDER_EMAIL || 'sstcdurg@gmail.com', // Sender email bhi .env mein rakhein
+      subject: `IT Support: Ticket #${ticketId} Confirmed`,
       html: `
-        <div style="font-family: sans-serif; line-height: 1.5;">
-          <h2>Ticket Confirmation</h2>
-          <p>Your IT support ticket has been created successfully.</p>
-          <ul>
-            <li><strong>Ticket ID:</strong> ${ticketId}</li>
-            <li><strong>Issue:</strong> ${issue}</li>
-            <li><strong>Service Fee:</strong> $${price}</li>
-          </ul>
-          <p>We will contact you shortly.</p>
-          <hr />
-          <p><em>Thank you, IT Help Desk Team</em></p>
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;">
+          <h2 style="color: #333;">Support Ticket Created</h2>
+          <p>Your ticket has been successfully registered.</p>
+          <p><strong>Ticket ID:</strong> ${ticketId}</p>
+          <p><strong>Issue:</strong> ${issue}</p>
+          <p><strong>Service Fee:</strong> $${price}</p>
+          <br/>
+          <p>Regards,<br/>IT Help Desk Team</p>
         </div>
-      `
-    });
+      `,
+    };
 
-    if (error) {
-      console.error("Resend API Error:", error);
-      return false;
-    }
-
-    console.log("Email sent successfully via Resend! ID:", data?.id);
+    await sgMail.send(msg);
+    console.log("Email sent successfully!");
     return true;
 
-  } catch (err) {
-    console.error("Unexpected error in Resend mailer:", err);
+  } catch (error: any) {
+    console.error("SendGrid API Error:", error);
     return false;
   }
 };
