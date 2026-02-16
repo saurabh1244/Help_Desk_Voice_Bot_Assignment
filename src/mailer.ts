@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import "dotenv/config"; // Ensure env vars are loaded here too just in case
+import "dotenv/config";
 
 export const sendConfirmationEmail = async (
   to: string,
@@ -9,17 +9,19 @@ export const sendConfirmationEmail = async (
 ) => {
   try {
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com", // Explicit Host
-      port: 465,              // Explicit Secure Port (Best for Render)
-      secure: true,           // True for 465, false for other ports
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      // SAFETY SETTINGS (Prevents the "Hang")
-      connectionTimeout: 10000, // Wait max 10 seconds for connection
-      greetingTimeout: 5000,    // Wait max 5 seconds for hello
-      socketTimeout: 10000,     // Wait max 10 seconds for data
+      // --- THE FIX IS HERE ---
+      // Force IPv4 because IPv6 often times out on cloud servers
+      family: 4, 
+      // -----------------------
+      connectionTimeout: 10000,
+      greetingTimeout: 5000, 
     });
 
     console.log(`Attempting to send email to ${to}...`);
@@ -39,10 +41,9 @@ IT Help Desk`,
     });
 
     console.log("Email sent successfully! ID:", info.messageId);
-    return true; // Return success
+    return true; 
 
   } catch (error) {
-    // If email fails, we LOG it, but we return FALSE so the app doesn't crash
     console.error("EMAIL FAILED (Non-fatal):", error);
     return false;
   }
