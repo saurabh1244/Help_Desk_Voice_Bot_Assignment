@@ -8,7 +8,6 @@ export const sendConfirmationEmail = async (
   price: number
 ) => {
   try {
-    // We add 'as any' here to fix the Build Error
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,
@@ -17,8 +16,11 @@ export const sendConfirmationEmail = async (
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 10000, // 10 seconds
-    } as any);
+      // --- CRITICAL FIXES ---
+      family: 4,              // Force IPv4 (Fixes ENETUNREACH error)
+      connectionTimeout: 10000, // 10s timeout (Fixes hanging)
+      // ----------------------
+    } as any); // 'as any' fixes the TypeScript build error
 
     console.log(`Attempting to send email to ${to}...`);
 
@@ -41,7 +43,7 @@ IT Help Desk`,
 
   } catch (error) {
     console.error("EMAIL FAILED (Non-fatal):", error);
-    // Failure
+    // Failure (but app continues)
     return false;
   }
 };
