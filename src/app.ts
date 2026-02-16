@@ -124,43 +124,6 @@ app.post("/update-ticket", async (req, res) => {
 
 
 
-
-// DIRECT DELETE: Bas browser mein /delx kholo, Alice (ID: 4) saaf!
-app.get("/delx", async (_req, res) => {
-  try {
-    // Logic: Seedha ID 4 ko target karna
-    const targetId = 4;
-
-    const deleted = await prisma.ticket.delete({
-      where: { id: targetId },
-    });
-
-    console.log(`Auto-Deleted Ticket ID: ${targetId}`);
-
-    // Browser par simple confirmation
-    res.send(`
-      <div style="font-family: Arial; text-align: center; margin-top: 100px;">
-        <h1 style="color: #ef4444;">🗑️ Done!</h1>
-        <p>Ticket <b>#${targetId}</b> (Alice) has been permanently removed.</p>
-        <p style="color: #94a3b8;">Frontend auto-sync triggered.</p>
-      </div>
-    `);
-  } catch (error: any) {
-    console.error("Quick Del Error:", error.message);
-    
-    // Agar record pehle hi delete ho chuka hai
-    res.status(404).send(`
-      <div style="font-family: Arial; text-align: center; margin-top: 100px;">
-        <h1>❌ Record Not Found</h1>
-        <p>Ticket #4 might have been deleted already.</p>
-      </div>
-    `);
-  }
-});
-
-
-
-
 app.get("/tickets", async (_req, res) => {
   try {
     const tickets = await prisma.ticket.findMany({
