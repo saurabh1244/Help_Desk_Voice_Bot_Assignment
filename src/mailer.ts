@@ -1,41 +1,50 @@
-import sgMail from '@sendgrid/mail';
+import * as BREVO from '@getbrevo/brevo';
 import "dotenv/config";
 
-// Key ab sirf .env se uthayega
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
+// API Instance initialize karein
+const apiInstance = new BREVO.TransactionalEmailsApi();
+
+// Authentication setup
+apiInstance.setApiKey(BREVO.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || "");
 
 export const sendConfirmationEmail = async (
-  to: string,
-  ticketId: number,
-  issue: string,
+  to: string, 
+  ticketId: number, 
+  issue: string, 
   price: number
 ) => {
   try {
-    console.log(`Attempting to send email to ${to} via SendGrid API...`);
+    const sendSmtpEmail = new BREVO.SendSmtpEmail();
 
-    const msg = {
-      to: to, 
-      from: process.env.SENDER_EMAIL || 'sstcdurg@gmail.com', // Sender email bhi .env mein rakhein
-      subject: `IT Support: Ticket #${ticketId} Confirmed`,
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;">
-          <h2 style="color: #333;">Support Ticket Created</h2>
-          <p>Your ticket has been successfully registered.</p>
-          <p><strong>Ticket ID:</strong> ${ticketId}</p>
-          <p><strong>Issue:</strong> ${issue}</p>
-          <p><strong>Service Fee:</strong> $${price}</p>
-          <br/>
-          <p>Regards,<br/>IT Help Desk Team</p>
-        </div>
-      `,
-    };
+    sendSmtpEmail.subject = "Support Ticket Confirmation";
+    sendSmtpEmail.htmlContent = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+        <h2 style="color: #007bff;">Ticket Created Successfully</h2>
+        <p>Your IT support ticket has been registered.</p>
+        <p><strong>Ticket ID:</strong> #${ticketId}</p>
+        <p><strong>Issue:</strong> ${issue}</p>
+        <p><strong>Total Amount:</strong> $${price}</p>
+        <br/>
+        <p>Regards,<br/>IT Help Desk Team</p>
+      </div>`;
+    
+    // Aapka verified Brevo email
+    sendSmtpEmail.sender = { name: "IT Help Desk", email: process.env.SENDER_EMAIL || "" };
+    sendSmtpEmail.to = [{ email: to }];
 
-    await sgMail.send(msg);
-    console.log("Email sent successfully!");
+    console.log(`Sending email to ${to} via Brevo API...`);
+    
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("Brevo Success:", result.response.statusCode);
+    
     return true;
-
   } catch (error: any) {
-    console.error("SendGrid API Error:", error);
+    console.error("Brevo API Error:");
+    if (error.response && error.response.body) {
+      console.error(JSON.stringify(error.response.body));
+    } else {
+      console.error(error.message);
+    }
     return false;
   }
 };
