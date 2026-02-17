@@ -15,21 +15,13 @@ app.get("/", (_req, res) => {
   res.send("Express server is running");
 });
 
-app.post("/create-ticket", async (req, res) => {
 
+app.post("/create-ticket", async (req, res) => {
   try {
     const { name, email, phone, address, issue } = req.body;
 
-    console.log("Parsed data from VAPI:", {
-      name,
-      email,
-      phone,
-      address,
-      issue,
-    });
-
-    if (!issue) {
-      return res.status(400).json({ error: "Issue is required" });
+    if (!issue || !email) {
+      return res.status(400).json({ error: "Required fields (issue/email) are missing." });
     }
 
     const ISSUE_PRICE_MAP: Record<string, { issue: string; price: number }> = {
@@ -40,56 +32,53 @@ app.post("/create-ticket", async (req, res) => {
     };
 
     const issueText = issue.toLowerCase().replace(/[^a-z]/g, "");
-
-    const selected = issueText.includes("wifi")
-      ? ISSUE_PRICE_MAP.wifi
-      : issueText.includes("email")
-        ? ISSUE_PRICE_MAP.email
-        : issueText.includes("slow")
-          ? ISSUE_PRICE_MAP.slow
-          : issueText.includes("printer")
-            ? ISSUE_PRICE_MAP.printer
-            : null;
+    const selected = issueText.includes("wifi") ? ISSUE_PRICE_MAP.wifi :
+                     issueText.includes("email") ? ISSUE_PRICE_MAP.email :
+                     issueText.includes("slow") ? ISSUE_PRICE_MAP.slow :
+                     issueText.includes("printer") ? ISSUE_PRICE_MAP.printer : null;
 
     if (!selected) {
-      return res.status(400).json({ error: "Unsupported issue" });
+      return res.status(400).json({ error: "Unsupported issue category." });
     }
 
+    let ticket;
+    try {
+      ticket = await prisma.ticket.create({
+        data: {
+          name: name || "Anonymous",
+          email,
+          phone: phone || null,
+          address: address || "Remote Support",
+          issue: selected.issue,
+          price: selected.price,
+        },
+      });
+    } catch (dbError) {
+      console.error("Prisma Error:", dbError);
+      return res.status(500).json({ error: "Database creation failed." });
+    }
 
-    const ticket = await prisma.ticket.create({
-      data: {
-        name,
-        email,
-        phone,
-        address,
-        issue: selected.issue,
-        price: selected.price,
-      },
+    let emailSuccess = false;
+    try {
+      emailSuccess = await sendConfirmationEmail(email, ticket.id, ticket.issue, ticket.price);
+      if (emailSuccess) {
+        console.log(`✅ Email sent for Ticket #${ticket.id}`);
+      }
+    } catch (mailError) {
+      console.error("Brevo/Mailer Error:", mailError);
+    }
+
+    return res.json({
+      ...ticket,
+      emailStatus: emailSuccess ? "sent" : "failed"
     });
 
-
-   const emailSuccess = await sendConfirmationEmail(email, ticket.id, ticket.issue, ticket.price);
-
-    if (emailSuccess) {
-        console.log("Email sent successfully!");
-    } else {
-        console.log("Email failed, but ticket created locally.");
-    }
-
-
-    const responsePayload = {
-      ticketId: ticket.id,
-      issue: ticket.issue,
-      price: ticket.price,
-    };
-
-
-
-    res.json(responsePayload);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Critical System Error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 app.post("/update-ticket", async (req, res) => {
   const { ticketId, name, email, phone, address } = req.body;
@@ -132,6 +121,22 @@ app.get("/tickets", async (_req, res) => {
     res.json(tickets);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch tickets" });
+  }
+});
+
+
+// 1. Delete Ticket API
+app.delete("/tickets/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.ticket.delete({
+      where: { id: Number(id) },
+    });
+    res.json({ message: "Ticket deleted successfully" });
+  } catch (error) {
+    console.error("Delete error:", error);
+    res.status(404).json({ error: "Ticket not found" });
   }
 });
 
